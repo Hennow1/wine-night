@@ -194,7 +194,7 @@
       <div class="card" style="text-align:center;padding:32px 28px">
         <div style="font-size:2.5rem;margin-bottom:10px">⏳</div>
         <h2 style="border:none;margin-bottom:6px">Waiting for guests to join</h2>
-        <p style="color:var(--muted);font-style:italic">Once everyone's in, pick whose wine goes first</p>
+        <p style="color:var(--muted);font-style:italic">Once everyone's in, start tasting — guests rate wines at their own pace</p>
       </div>
       <div class="card">
         <h2>Guests Joined</h2>
@@ -220,90 +220,42 @@
 
     <!-- TASTING -->
     <div id="view-tasting" class="hidden">
-      <!-- Current wine -->
+
+      <!-- Host: progress overview + reveal -->
+      <div class="card hidden" id="host-tasting-card">
+        <h2>Host Overview</h2>
+        <div id="host-progress-list"></div>
+        <div class="btn-row" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <button class="btn btn-gold" onclick="revealScores()">🏆 Reveal Scores</button>
+        </div>
+      </div>
+
+      <!-- Everyone: pick a wine and rate it -->
       <div class="card">
-        <div class="section-title" id="wine-counter"></div>
-        <h2 id="tasting-wine-name" style="font-size:1.6rem;border:none;margin-bottom:4px"></h2>
-        <p style="color:var(--muted);font-style:italic;font-size:0.9rem">Rate this wine — scores are hidden until the host reveals them</p>
-        <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
-      </div>
+        <h2>Rate the Wines</h2>
+        <p style="color:var(--muted);font-style:italic;font-size:0.9rem;margin-bottom:16px">Tap a wine to rate it — scores stay hidden until the host reveals them</p>
+        <div id="wine-rating-list"></div>
 
-      <!-- Rating form (guests only) -->
-      <div class="card" id="rating-form-card">
-        <h2>Your Rating</h2>
-        <div id="already-rated-msg" class="alert alert-success hidden">
-          ✓ You've rated this wine. You can update it below.
-        </div>
-        <div class="field">
-          <label>Score (1–10)</label>
-          <div id="score-stars" class="star-rating"></div>
-          <div style="font-size:0.85rem;color:var(--muted);font-style:italic" id="score-label">Tap a star to score</div>
-        </div>
-        <div class="field">
-          <label>Tasting notes (optional)</label>
-          <textarea id="rating-notes" placeholder="Dark cherry, hints of oak..."></textarea>
-        </div>
-        <button class="btn btn-primary" onclick="submitRating()">Submit Rating</button>
-      </div>
-
-      <!-- Who has rated -->
-      <div class="card">
-        <h2>Ratings so far</h2>
-        <ul class="participant-list" id="rated-list"></ul>
-      </div>
-
-      <!-- Host controls -->
-      <div class="card hidden" id="host-controls">
-        <h2>Host Controls</h2>
-        <p class="section-title" style="margin-bottom:12px">Who's wine is next?</p>
-        <div class="person-grid" id="person-picker"></div>
-        <div class="btn-row" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-          <button class="btn btn-outline" id="prev-btn" onclick="prevWine()">← Previous</button>
-          <button class="btn btn-gold" id="reveal-btn" onclick="revealScores()">🏆 Reveal Scores</button>
-        </div>
-      </div>
-
-      <!-- Host rating (appears after host controls so it's not missed) -->
-      <div class="card hidden" id="host-rating-card">
-        <h2>Your Rating</h2>
-        <div id="host-already-rated-msg" class="alert alert-success hidden">
-          ✓ You've rated this wine. You can update it below.
-        </div>
-        <div class="field">
-          <label>Score (1–10)</label>
-          <div id="host-score-stars" class="star-rating"></div>
-          <div style="font-size:0.85rem;color:var(--muted);font-style:italic" id="host-score-label">Tap a star to score</div>
-        </div>
-        <div class="field">
-          <label>Tasting notes (optional)</label>
-          <textarea id="host-rating-notes" placeholder="Dark cherry, hints of oak..."></textarea>
-        </div>
-        <button class="btn btn-primary" onclick="submitHostRating()">Submit Rating</button>
-      </div>
-
-      <!-- Previous wines — edit past ratings -->
-      <div id="past-wines-section" class="hidden">
-        <div class="card">
-          <h2>Previous Wines</h2>
-          <div id="past-wines-list"></div>
-          <div id="past-wine-edit" class="hidden" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-            <p class="section-title" id="past-wine-edit-title" style="margin-bottom:10px"></p>
-            <div class="field">
-              <label>Score (1–10)</label>
-              <div id="past-score-stars" class="star-rating"></div>
-              <div style="font-size:0.85rem;color:var(--muted);font-style:italic" id="past-score-label">Tap a star to score</div>
-            </div>
-            <div class="field">
-              <label>Tasting notes (optional)</label>
-              <textarea id="past-rating-notes" placeholder="Dark cherry, hints of oak..."></textarea>
-            </div>
-            <div class="btn-row">
-              <button class="btn btn-primary" onclick="submitPastRating()">Update Rating</button>
-              <button class="btn btn-outline btn-sm" onclick="closePastEdit()">Cancel</button>
-            </div>
+        <!-- Inline rating form — shared, one wine at a time -->
+        <div id="wine-edit-panel" class="hidden" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <p class="section-title" id="wine-edit-title" style="margin-bottom:10px"></p>
+          <div class="alert alert-success hidden" id="wine-already-rated-msg">✓ Already rated — submitting will update your score.</div>
+          <div class="field">
+            <label>Score (1–10)</label>
+            <div id="wine-score-stars" class="star-rating"></div>
+            <div style="font-size:0.85rem;color:var(--muted);font-style:italic" id="wine-score-label">Tap a star to score</div>
+          </div>
+          <div class="field">
+            <label>Tasting notes (optional)</label>
+            <textarea id="wine-rating-notes" placeholder="Dark cherry, hints of oak..."></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="submitWineRating()">Submit Rating</button>
+            <button class="btn btn-outline btn-sm" onclick="closeWineEdit()">Cancel</button>
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- REVEALED -->
@@ -325,14 +277,11 @@
   const socket = io();
   let me = null;
   let currentState = null;
-  let selectedScore = 0;
-  let hostScore = 0;
-  let pastScore = 0;
+  let wineScore = 0;
   let loginTab = 'guest';
   let joinedAs = null;
-  let myRatings = {};          // ownerId -> { score, notes } — client-side log of submitted ratings
-  let currentWineId = null;    // detects wine changes so scores reset correctly
-  let editingPastOwnerId = null;
+  let myRatings = {};           // ownerId -> { score, notes } — restored from server on rejoin
+  let editingWineOwnerId = null;
 
   function setTab(tab) {
     loginTab = tab;
@@ -351,26 +300,23 @@
   document.getElementById('login-name').addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
   document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
 
-  socket.on('joined', ({ id, isHost }) => {
+  socket.on('joined', ({ id, isHost, myRatings: serverRatings }) => {
     me = { id, isHost };
+    if (serverRatings) Object.assign(myRatings, serverRatings);
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('header-name').textContent = isHost ? '🔑 Host' : '';
   });
 
-  // On reconnect, restore session instead of appearing as a new participant
   socket.on('connect', () => {
     if (me) socket.emit('rejoin', { id: me.id });
   });
 
-  // Server lost our session (e.g. restart) — re-join fresh with stored credentials
   socket.on('sessionLost', () => {
     if (joinedAs) socket.emit('join', joinedAs);
   });
 
-  socket.on('joinError', (msg) => {
-    alert(msg);
-  });
+  socket.on('joinError', (msg) => { alert(msg); });
 
   socket.on('kicked', () => {
     alert('You have been removed from the session by the host.');
@@ -405,68 +351,106 @@
     }
   }
 
+  // ── Tasting phase ────────────────────────────────────────────────────────
+
   function renderTasting(s) {
-    const owner = s.currentOwner;
-    const tasted = s.tastedOwnerIds.length;
-    const total = s.totalInQueue || s.participants.length;
-    document.getElementById('wine-counter').textContent = `Wine ${tasted} of ${total}`;
-    document.getElementById('tasting-wine-name').textContent = `${owner?.name}'s wine`;
-    const pct = total > 0 ? (tasted / total) * 100 : 0;
-    document.getElementById('progress-fill').style.width = pct + '%';
-
-    renderParticipants(s.participants, 'rated-list', s.ratedParticipantIds);
-
-    // Detect wine change and reset active scores
-    if (s.currentOwner?.id !== currentWineId) {
-      currentWineId = s.currentOwner?.id || null;
-      selectedScore = myRatings[currentWineId]?.score || 0;
-      hostScore = myRatings[currentWineId]?.score || 0;
-      editingPastOwnerId = null;
-      hide('past-wine-edit');
-    }
-
-    if (me.isHost) {
-      show('host-controls');
-      renderPersonPicker(s);
-      document.getElementById('prev-btn').disabled = s.currentIndex <= 0;
-      hide('rating-form-card'); // host uses host-rating-card instead
-      const isMyWine = s.currentOwner?.id === me.id;
-      document.getElementById('host-rating-card').classList.toggle('hidden', isMyWine || !s.currentOwner);
-      if (!isMyWine && s.currentOwner) {
-        const rated = s.ratedParticipantIds.includes(me.id);
-        document.getElementById('host-already-rated-msg').classList.toggle('hidden', !rated);
-        buildHostStars(hostScore);
-        if (myRatings[currentWineId] && !document.getElementById('host-rating-notes').value) {
-          document.getElementById('host-rating-notes').value = myRatings[currentWineId].notes || '';
-        }
-      }
-    } else {
-      hide('host-controls', 'host-rating-card');
-      show('rating-form-card');
-      const myRated = s.ratedParticipantIds.includes(me.id);
-      document.getElementById('already-rated-msg').classList.toggle('hidden', !myRated);
-      buildStars(selectedScore);
-      if (myRatings[currentWineId] && !document.getElementById('rating-notes').value) {
-        document.getElementById('rating-notes').value = myRatings[currentWineId].notes || '';
-      }
-    }
-
-    renderPastWines(s);
+    if (me.isHost) { show('host-tasting-card'); renderHostProgress(s); }
+    else { hide('host-tasting-card'); }
+    renderWineList(s);
   }
 
-  function renderPersonPicker(s) {
-    const grid = document.getElementById('person-picker');
-    const tastedSet = new Set(s.tastedOwnerIds);
-    const people = s.participants;
-    grid.innerHTML = people.map(p => {
-      const isCurrent = s.currentOwner?.id === p.id;
-      const isTasted = tastedSet.has(p.id) && !isCurrent;
-      let cls = 'person-btn';
-      if (isCurrent) cls += ' current';
-      else if (isTasted) cls += ' tasted';
-      const label = isTasted ? `✓ ${esc(p.name)}` : esc(p.name);
-      return `<button class="${cls}" onclick="selectNext('${p.id}')">${label}</button>`;
+  function renderHostProgress(s) {
+    const el = document.getElementById('host-progress-list');
+    if (!s.wineOwners.length) {
+      el.innerHTML = '<p style="color:var(--muted);font-style:italic">No wines in session.</p>';
+      return;
+    }
+    el.innerHTML = s.wineOwners.map(owner => {
+      const raters = s.ratingProgress[owner.id] || [];
+      const possible = s.participants.filter(p => p.id !== owner.id);
+      const pct = possible.length ? Math.round(raters.length / possible.length * 100) : 0;
+      const names = raters.map(rid => s.participants.find(p => p.id === rid)?.name || '?').join(', ');
+      return `<div style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-weight:600;flex:1">${esc(owner.name)}'s wine</span>
+          <span style="font-size:0.82rem;color:var(--muted)">${raters.length}/${possible.length} rated</span>
+        </div>
+        <div class="progress-bar"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+        ${names ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:3px">${esc(names)}</div>` : ''}
+      </div>`;
     }).join('');
+  }
+
+  function renderWineList(s) {
+    const el = document.getElementById('wine-rating-list');
+    const wines = s.wineOwners.filter(o => o.id !== me.id);
+    if (!wines.length) {
+      el.innerHTML = '<p style="color:var(--muted);font-style:italic;font-size:0.9rem">No wines to rate yet.</p>';
+      return;
+    }
+    el.innerHTML = wines.map(owner => {
+      const raters = s.ratingProgress[owner.id] || [];
+      const myR = myRatings[owner.id];
+      const isEditing = editingWineOwnerId === owner.id;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="flex:1;font-weight:600">${esc(owner.name)}'s wine</span>
+        ${myR
+          ? `<span style="color:var(--wine);font-weight:700">${myR.score}/10</span>`
+          : `<span style="font-size:0.78rem;color:var(--muted)">${raters.length} rated</span>`}
+        <button class="btn ${isEditing ? 'btn-primary' : 'btn-outline'} btn-sm"
+          onclick="openWineEdit('${owner.id}','${esc(owner.name)}')">${myR ? 'Edit' : 'Rate'}</button>
+      </div>`;
+    }).join('');
+  }
+
+  function openWineEdit(ownerId, name) {
+    editingWineOwnerId = ownerId;
+    const existing = myRatings[ownerId];
+    wineScore = existing?.score || 0;
+    document.getElementById('wine-edit-title').textContent = `${name}'s wine`;
+    document.getElementById('wine-rating-notes').value = existing?.notes || '';
+    document.getElementById('wine-already-rated-msg').classList.toggle('hidden', !existing);
+    buildWineStars(wineScore);
+    show('wine-edit-panel');
+    document.getElementById('wine-edit-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeWineEdit() {
+    editingWineOwnerId = null;
+    hide('wine-edit-panel');
+  }
+
+  function submitWineRating() {
+    if (!wineScore) { alert('Please select a score'); return; }
+    const notes = document.getElementById('wine-rating-notes').value.trim();
+    myRatings[editingWineOwnerId] = { score: wineScore, notes };
+    socket.emit('submitRating', { ownerId: editingWineOwnerId, score: wineScore, notes });
+    closeWineEdit();
+    if (currentState) renderWineList(currentState);
+  }
+
+  function buildWineStars(score) {
+    buildStarsIn('wine-score-stars', 'wine-score-label', score, v => { wineScore = v; });
+  }
+
+  // ── Shared utilities ─────────────────────────────────────────────────────
+
+  function buildStarsIn(containerId, labelId, score, onSelect) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const map = ['','Poor','Poor','Below avg','Average','Average','Good','Good','Very good','Excellent','Outstanding!'];
+    container.innerHTML = '';
+    for (let i = 1; i <= 10; i++) {
+      const label = document.createElement('label');
+      label.textContent = '★';
+      label.classList.toggle('active', i <= score);
+      label.onclick = () => {
+        onSelect(i);
+        buildStarsIn(containerId, labelId, i, onSelect);
+        document.getElementById(labelId).textContent = `${i}/10 — ${map[i]}`;
+      };
+      container.appendChild(label);
+    }
   }
 
   function renderParticipants(participants, listId, ratedIds, showKick = false) {
@@ -478,12 +462,13 @@
     }
     el.innerHTML = participants.map(p => {
       const rated = ratedIds.includes(p.id);
+      const away = p.connected === false;
       const kickBtn = showKick && !p.isHost
         ? `<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="kickParticipant('${p.id}', '${esc(p.name)}')">Remove</button>`
         : '';
       return `<li>
-        <div class="dot ${rated ? '' : 'unrated'}"></div>
-        <span>${esc(p.name)}</span>
+        <div class="dot ${away ? 'unrated' : ''}"></div>
+        <span>${esc(p.name)}${away ? ' <span style="font-size:0.75rem;color:var(--muted)">(away)</span>' : ''}</span>
         <span class="chip ${p.isHost ? 'chip-host' : 'chip-guest'}">${p.isHost ? 'Host' : 'Guest'}</span>
         ${ratedIds.length > 0 && !kickBtn ? `<span style="margin-left:auto;font-size:0.8rem;color:var(--muted)">${rated ? '✓ Rated' : 'Waiting...'}</span>` : ''}
         ${kickBtn}
@@ -521,114 +506,9 @@
     `).join('');
   }
 
-  function buildStarsIn(containerId, labelId, score, onSelect) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    const map = ['','Poor','Poor','Below avg','Average','Average','Good','Good','Very good','Excellent','Outstanding!'];
-    container.innerHTML = '';
-    for (let i = 1; i <= 10; i++) {
-      const label = document.createElement('label');
-      label.textContent = '★';
-      label.classList.toggle('active', i <= score);
-      label.onclick = () => {
-        onSelect(i);
-        buildStarsIn(containerId, labelId, i, onSelect);
-        document.getElementById(labelId).textContent = `${i}/10 — ${map[i]}`;
-      };
-      container.appendChild(label);
-    }
-  }
-
-  function buildStars(score) {
-    buildStarsIn('score-stars', 'score-label', score, v => { selectedScore = v; });
-  }
-  function buildHostStars(score) {
-    buildStarsIn('host-score-stars', 'host-score-label', score, v => { hostScore = v; });
-  }
-  function buildPastStars(score) {
-    buildStarsIn('past-score-stars', 'past-score-label', score, v => { pastScore = v; });
-  }
-
-  function renderPastWines(s) {
-    const section = document.getElementById('past-wines-section');
-    const currentId = s.currentOwner?.id;
-    const past = s.tastedOwnerIds.filter(id => id !== currentId && id !== me.id);
-    if (past.length === 0) { section.classList.add('hidden'); return; }
-    section.classList.remove('hidden');
-    const pMap = Object.fromEntries(s.participants.map(p => [p.id, p]));
-    document.getElementById('past-wines-list').innerHTML = past.map(ownerId => {
-      const owner = pMap[ownerId];
-      if (!owner) return '';
-      const r = myRatings[ownerId];
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <span style="flex:1;font-weight:600">${esc(owner.name)}'s wine</span>
-        ${r ? `<span style="color:var(--wine);font-weight:700">${r.score}/10</span>` : '<span style="color:var(--muted);font-size:0.85rem">Not rated</span>'}
-        <button class="btn btn-outline btn-sm" onclick="openPastEdit('${ownerId}','${esc(owner.name)}')">${r ? 'Edit' : 'Rate'}</button>
-      </div>`;
-    }).join('');
-  }
-
-  function openPastEdit(ownerId, name) {
-    editingPastOwnerId = ownerId;
-    const existing = myRatings[ownerId];
-    pastScore = existing?.score || 0;
-    document.getElementById('past-wine-edit-title').textContent = `Editing: ${name}'s wine`;
-    document.getElementById('past-rating-notes').value = existing?.notes || '';
-    buildPastStars(pastScore);
-    show('past-wine-edit');
-  }
-
-  function closePastEdit() {
-    editingPastOwnerId = null;
-    hide('past-wine-edit');
-  }
-
-  function submitPastRating() {
-    if (!pastScore) { alert('Please select a score'); return; }
-    const notes = document.getElementById('past-rating-notes').value.trim();
-    myRatings[editingPastOwnerId] = { score: pastScore, notes };
-    socket.emit('submitRating', { ownerId: editingPastOwnerId, score: pastScore, notes });
-    closePastEdit();
-    if (currentState) renderPastWines(currentState);
-  }
-
-  function showPicker() {
-    // Transition from lobby: host selects first wine
-    // Just start tasting phase — selectNext will kick it off
-    // First, show an instruction or auto-show the tasting view with picker
-    // We emit a no-op to move to tasting phase with no current wine yet — handled by selectNext
-    // For UX: tell server to move to tasting mode so picker shows
-    socket.emit('startTasting');
-  }
-
-  function selectNext(ownerId) { socket.emit('selectNext', { ownerId }); }
-  function prevWine() { socket.emit('prevWine'); }
+  function showPicker() { socket.emit('startTasting'); }
   function revealScores() { socket.emit('reveal'); }
   function resetEverything() { if (confirm('Reset everything?')) socket.emit('reset'); }
-
-  function submitRating() {
-    if (!selectedScore) { alert('Please select a score'); return; }
-    const ownerId = currentState.currentOwner.id;
-    const notes = document.getElementById('rating-notes').value.trim();
-    myRatings[ownerId] = { score: selectedScore, notes };
-    socket.emit('submitRating', { ownerId, score: selectedScore, notes });
-    document.getElementById('rating-notes').value = '';
-    selectedScore = 0;
-    buildStars(0);
-    document.getElementById('score-label').textContent = 'Tap a star to score';
-  }
-
-  function submitHostRating() {
-    if (!hostScore) { alert('Please select a score'); return; }
-    const ownerId = currentState.currentOwner.id;
-    const notes = document.getElementById('host-rating-notes').value.trim();
-    myRatings[ownerId] = { score: hostScore, notes };
-    socket.emit('submitRating', { ownerId, score: hostScore, notes });
-    document.getElementById('host-rating-notes').value = '';
-    hostScore = 0;
-    buildHostStars(0);
-    document.getElementById('host-score-label').textContent = 'Tap a star to score';
-  }
 
   function show(...ids) { ids.forEach(id => document.getElementById(id)?.classList.remove('hidden')); }
   function hide(...ids) { ids.forEach(id => document.getElementById(id)?.classList.add('hidden')); }

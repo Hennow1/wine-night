@@ -139,10 +139,10 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  // Guest: submit rating
+  // Submit rating (anyone except the wine's owner)
   socket.on('submitRating', ({ ownerId, score, notes }) => {
     const raterId = socket.data.participantId;
-    if (!raterId) return;
+    if (!raterId || raterId === ownerId) return;
     if (!state.ratings[ownerId]) state.ratings[ownerId] = {};
     state.ratings[ownerId][raterId] = { raterId, score: Number(score), notes: notes || '' };
     broadcastState();

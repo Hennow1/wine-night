@@ -369,9 +369,11 @@
 
     if (me.isHost) {
       show('host-controls');
-      document.getElementById('rating-form-card').classList.add('hidden');
       renderPersonPicker(s);
       document.getElementById('prev-btn').disabled = s.currentIndex <= 0;
+      const isMyWine = s.currentOwner?.id === me.id;
+      document.getElementById('rating-form-card').classList.toggle('hidden', isMyWine);
+      if (!isMyWine) buildStars(selectedScore);
     } else {
       hide('host-controls');
       document.getElementById('rating-form-card').classList.remove('hidden');
@@ -382,8 +384,7 @@
   function renderPersonPicker(s) {
     const grid = document.getElementById('person-picker');
     const tastedSet = new Set(s.tastedOwnerIds);
-    // All participants except the host
-    const people = s.participants.filter(p => !p.isHost);
+    const people = s.participants;
     grid.innerHTML = people.map(p => {
       const isCurrent = s.currentOwner?.id === p.id;
       const isTasted = tastedSet.has(p.id) && !isCurrent;

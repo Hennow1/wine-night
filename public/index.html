@@ -325,6 +325,11 @@
     alert(msg);
   });
 
+  socket.on('kicked', () => {
+    alert('You have been removed from the session by the host.');
+    location.reload();
+  });
+
   socket.on('state', (s) => {
     currentState = s;
     render(s);
@@ -337,7 +342,7 @@
     if (s.phase === 'lobby') {
       if (me.isHost) {
         show('view-host-lobby');
-        renderParticipants(s.participants, 'lobby-participants-host', []);
+        renderParticipants(s.participants, 'lobby-participants-host', [], true);
         document.getElementById('start-pick-btn').disabled = s.participants.filter(p => !p.isHost).length === 0;
       } else {
         show('view-guest-lobby');
@@ -396,7 +401,7 @@
     }).join('');
   }
 
-  function renderParticipants(participants, listId, ratedIds) {
+  function renderParticipants(participants, listId, ratedIds, showKick = false) {
     const el = document.getElementById(listId);
     if (!el) return;
     if (participants.length === 0) {
@@ -405,13 +410,21 @@
     }
     el.innerHTML = participants.map(p => {
       const rated = ratedIds.includes(p.id);
+      const kickBtn = showKick && !p.isHost
+        ? `<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="kickParticipant('${p.id}', '${esc(p.name)}')">Remove</button>`
+        : '';
       return `<li>
         <div class="dot ${rated ? '' : 'unrated'}"></div>
         <span>${esc(p.name)}</span>
         <span class="chip ${p.isHost ? 'chip-host' : 'chip-guest'}">${p.isHost ? 'Host' : 'Guest'}</span>
-        ${ratedIds.length > 0 ? `<span style="margin-left:auto;font-size:0.8rem;color:var(--muted)">${rated ? '✓ Rated' : 'Waiting...'}</span>` : ''}
+        ${ratedIds.length > 0 && !kickBtn ? `<span style="margin-left:auto;font-size:0.8rem;color:var(--muted)">${rated ? '✓ Rated' : 'Waiting...'}</span>` : ''}
+        ${kickBtn}
       </li>`;
     }).join('');
+  }
+
+  function kickParticipant(id, name) {
+    if (confirm(`Remove ${name} from the session?`)) socket.emit('kick', { participantId: id });
   }
 
   function renderResults(results) {

@@ -139,6 +139,22 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
+  // Host: kick a participant
+  socket.on('kick', ({ participantId }) => {
+    const p = state.participants[socket.data.participantId];
+    if (!p?.isHost) return;
+    const target = state.participants[participantId];
+    if (!target || target.isHost) return;
+    if (disconnectTimers[participantId]) {
+      clearTimeout(disconnectTimers[participantId]);
+      delete disconnectTimers[participantId];
+    }
+    const targetSocket = io.sockets.sockets.get(target.socketId);
+    if (targetSocket) targetSocket.emit('kicked');
+    delete state.participants[participantId];
+    broadcastState();
+  });
+
   // Submit rating (anyone except the wine's owner)
   socket.on('submitRating', ({ ownerId, score, notes }) => {
     const raterId = socket.data.participantId;

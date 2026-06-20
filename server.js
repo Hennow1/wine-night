@@ -81,6 +81,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
   socket.on('join', ({ name, password }) => {
+    if (password && password !== HOST_PASSWORD) {
+      socket.emit('joinError', 'Incorrect host password.');
+      return;
+    }
     const isHost = password === HOST_PASSWORD;
     const id = crypto.randomUUID();
     state.participants[id] = { id, name, isHost, socketId: socket.id };

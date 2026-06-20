@@ -321,6 +321,10 @@
     if (joinedAs) socket.emit('join', joinedAs);
   });
 
+  socket.on('joinError', (msg) => {
+    alert(msg);
+  });
+
   socket.on('state', (s) => {
     currentState = s;
     render(s);

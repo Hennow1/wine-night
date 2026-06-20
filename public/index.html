@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wine Night</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --wine: #722F37;
+      --wine-dark: #4a1c22;
+      --wine-light: #a0444f;
+      --gold: #c9a84c;
+      --cream: #f8f4ee;
+      --text: #2c1810;
+      --muted: #8a7060;
+      --border: #e0d4c4;
+      --success: #4a7c59;
+    }
+
+    body { font-family: 'Georgia', serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    header {
+      background: var(--wine-dark);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 3px solid var(--gold);
+    }
+    header h1 { font-size: 1.4rem; letter-spacing: 0.05em; }
+    header .glass { font-size: 1.8rem; }
+    header .info { margin-left: auto; font-size: 0.85rem; opacity: 0.8; font-style: italic; }
+
+    main { max-width: 680px; margin: 0 auto; padding: 24px 16px; }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .card h2 { font-size: 1.3rem; color: var(--wine-dark); margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-weight: 600;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--wine); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--wine-dark); }
+    .btn-gold { background: var(--gold); color: var(--wine-dark); }
+    .btn-gold:hover:not(:disabled) { background: #b8973c; }
+    .btn-outline { background: transparent; color: var(--wine); border: 2px solid var(--wine); }
+    .btn-outline:hover:not(:disabled) { background: var(--wine); color: white; }
+    .btn-sm { padding: 6px 14px; font-size: 0.85rem; }
+    .btn-danger { background: #c0392b; color: white; }
+    .btn-danger:hover:not(:disabled) { background: #a93226; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 5px; font-style: italic; }
+    .field input, .field textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+      font-family: inherit; font-size: 0.95rem; background: var(--cream); color: var(--text); transition: border 0.15s;
+    }
+    .field input:focus, .field textarea:focus { outline: none; border-color: var(--wine); }
+    .field textarea { resize: vertical; min-height: 70px; }
+
+    .chip { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+    .chip-host { background: var(--gold); color: var(--wine-dark); }
+    .chip-guest { background: var(--border); color: var(--muted); }
+
+    .participant-list { list-style: none; }
+    .participant-list li {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.95rem;
+    }
+    .participant-list li:last-child { border-bottom: none; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+    .dot.unrated { background: var(--border); }
+
+    /* Person picker grid */
+    .person-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .person-btn {
+      padding: 14px 10px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      background: var(--cream);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      color: var(--text);
+    }
+    .person-btn:hover { border-color: var(--wine); background: white; color: var(--wine); }
+    .person-btn.current { border-color: var(--wine); background: var(--wine); color: white; }
+    .person-btn.tasted { border-color: var(--border); color: var(--muted); background: white; opacity: 0.55; }
+
+    .star-rating { display: flex; gap: 4px; margin: 12px 0; }
+    .star-rating label { font-size: 2.2rem; cursor: pointer; color: var(--border); transition: color 0.1s; line-height: 1; }
+    .star-rating label.active { color: var(--gold); }
+
+    .progress-bar { height: 6px; background: var(--border); border-radius: 3px; margin: 12px 0; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--wine); border-radius: 3px; transition: width 0.3s; }
+
+    .section-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; }
+
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; margin-bottom: 12px; }
+    .alert-success { background: #eaf5ee; color: var(--success); border: 1px solid #c3e6cb; }
+
+    .result-wine { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; overflow: hidden; }
+    .result-wine-header { background: var(--wine-dark); color: white; padding: 12px 18px; display: flex; align-items: center; gap: 12px; }
+    .result-rank { font-size: 1.5rem; width: 32px; text-align: center; }
+    .result-wine-name { flex: 1; font-size: 1.05rem; font-weight: 600; }
+    .result-avg { font-size: 1.3rem; font-weight: 700; color: var(--gold); }
+    .result-ratings { padding: 12px 18px; background: white; }
+    .result-rating-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; gap: 10px; }
+    .result-rating-row:last-child { border-bottom: none; }
+    .result-rating-row .rater { font-weight: 600; }
+    .result-rating-row .notes { color: var(--muted); font-style: italic; font-size: 0.82rem; flex: 1; text-align: right; }
+    .result-rating-row .rscore { font-weight: 700; color: var(--wine); white-space: nowrap; }
+
+    .hidden { display: none !important; }
+
+    #login-screen { max-width: 420px; margin: 60px auto; padding: 0 16px; }
+    #login-screen .logo { text-align: center; margin-bottom: 28px; }
+    #login-screen .logo .glass-big { font-size: 4rem; }
+    #login-screen .logo h1 { font-size: 2rem; color: var(--wine-dark); margin-top: 8px; }
+    #login-screen .logo p { color: var(--muted); font-style: italic; margin-top: 4px; }
+
+    .tab-row { display: flex; margin-bottom: 20px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .tab-btn { flex: 1; padding: 10px; background: var(--cream); border: none; font-family: inherit; font-size: 0.9rem; cursor: pointer; transition: all 0.15s; color: var(--muted); }
+    .tab-btn.active { background: var(--wine); color: white; font-weight: 600; }
+
+    @media (max-width: 480px) {
+      header h1 { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="logo">
+    <div class="glass-big">🍷</div>
+    <h1>Wine Night</h1>
+    <p>Score & discover your favourite bottle</p>
+  </div>
+  <div class="card">
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="setTab('guest')">Join as Guest</button>
+      <button class="tab-btn" onclick="setTab('host')">I'm the Host</button>
+    </div>
+    <div class="field">
+      <label>Your name</label>
+      <input type="text" id="login-name" placeholder="e.g. Sophie" maxlength="30">
+    </div>
+    <div class="field hidden" id="pw-field">
+      <label>Host password</label>
+      <input type="password" id="login-password" placeholder="Enter host password">
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="doJoin()">Join the Night 🥂</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app" class="hidden">
+  <header>
+    <span class="glass">🍷</span>
+    <h1>Wine Night</h1>
+    <span class="info" id="header-name"></span>
+  </header>
+
+  <main>
+    <!-- HOST LOBBY -->
+    <div id="view-host-lobby" class="hidden">
+      <div class="card" style="text-align:center;padding:32px 28px">
+        <div style="font-size:2.5rem;margin-bottom:10px">⏳</div>
+        <h2 style="border:none;margin-bottom:6px">Waiting for guests to join</h2>
+        <p style="color:var(--muted);font-style:italic">Once everyone's in, pick whose wine goes first</p>
+      </div>
+      <div class="card">
+        <h2>Guests Joined</h2>
+        <ul class="participant-list" id="lobby-participants-host"></ul>
+        <div class="btn-row">
+          <button class="btn btn-gold" id="start-pick-btn" onclick="showPicker()" disabled>Start Tasting →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUEST LOBBY -->
+    <div id="view-guest-lobby" class="hidden">
+      <div class="card" style="text-align:center;padding:40px 28px">
+        <div style="font-size:3rem;margin-bottom:12px">⏳</div>
+        <h2 style="border:none;margin-bottom:8px">Waiting for the host to begin...</h2>
+        <p style="color:var(--muted);font-style:italic">Grab a glass and get ready!</p>
+      </div>
+      <div class="card">
+        <h2>Guests Joined</h2>
+        <ul class="participant-list" id="lobby-participants-guest"></ul>
+      </div>
+    </div>
+
+    <!-- TASTING -->
+    <div id="view-tasting" class="hidden">
+      <!-- Current wine -->
+      <div class="card">
+        <div class="section-title" id="wine-counter"></div>
+        <h2 id="tasting-wine-name" style="font-size:1.6rem;border:none;margin-bottom:4px"></h2>
+        <p style="color:var(--muted);font-style:italic;font-size:0.9rem">Rate this wine — scores are hidden until the host reveals them</p>
+        <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill"></div></div>
+      </div>
+
+      <!-- Rating form (guests only) -->
+      <div class="card" id="rating-form-card">
+        <h2>Your Rating</h2>
+        <div id="already-rated-msg" class="alert alert-success hidden">
+          ✓ You've rated this wine. You can update it below.
+        </div>
+        <div class="field">
+          <label>Score (1–10)</label>
+          <div id="score-stars" class="star-rating"></div>
+          <div style="font-size:0.85rem;color:var(--muted);font-style:italic" id="score-label">Tap a star to score</div>
+        </div>
+        <div class="field">
+          <label>Tasting notes (optional)</label>
+          <textarea id="rating-notes" placeholder="Dark cherry, hints of oak..."></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="submitRating()">Submit Rating</button>
+      </div>
+
+      <!-- Who has rated -->
+      <div class="card">
+        <h2>Ratings so far</h2>
+        <ul class="participant-list" id="rated-list"></ul>
+      </div>
+
+      <!-- Host controls -->
+      <div class="card hidden" id="host-controls">
+        <h2>Host Controls</h2>
+        <p class="section-title" style="margin-bottom:12px">Who's wine is next?</p>
+        <div class="person-grid" id="person-picker"></div>
+        <div class="btn-row" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+          <button class="btn btn-outline" id="prev-btn" onclick="prevWine()">← Previous</button>
+          <button class="btn btn-gold" id="reveal-btn" onclick="revealScores()">🏆 Reveal Scores</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVEALED -->
+    <div id="view-revealed" class="hidden">
+      <div class="card" style="text-align:center;padding:32px 28px">
+        <div style="font-size:3rem;margin-bottom:8px">🏆</div>
+        <h2 style="border:none;font-size:1.6rem;margin-bottom:6px">The Results Are In!</h2>
+        <p style="color:var(--muted);font-style:italic">Ranked by average score</p>
+      </div>
+      <div id="results-list"></div>
+      <div class="card hidden" id="host-reset-card">
+        <button class="btn btn-danger btn-sm" onclick="resetEverything()">Reset & Start Over</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const socket = io();
+  let me = null;
+  let currentState = null;
+  let selectedScore = 0;
+  let loginTab = 'guest';
+
+  function setTab(tab) {
+    loginTab = tab;
+    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (i === 0) === (tab === 'guest')));
+    document.getElementById('pw-field').classList.toggle('hidden', tab === 'guest');
+  }
+
+  function doJoin() {
+    const name = document.getElementById('login-name').value.trim();
+    const password = loginTab === 'host' ? document.getElementById('login-password').value : '';
+    if (!name) { alert('Please enter your name'); return; }
+    socket.emit('join', { name, password });
+  }
+
+  document.getElementById('login-name').addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
+  document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
+
+  socket.on('joined', ({ id, isHost }) => {
+    me = { id, isHost };
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('header-name').textContent = isHost ? '🔑 Host' : '';
+  });
+
+  socket.on('state', (s) => {
+    currentState = s;
+    render(s);
+  });
+
+  function render(s) {
+    if (!me) return;
+    hide('view-host-lobby', 'view-guest-lobby', 'view-tasting', 'view-revealed');
+
+    if (s.phase === 'lobby') {
+      if (me.isHost) {
+        show('view-host-lobby');
+        renderParticipants(s.participants, 'lobby-participants-host', []);
+        document.getElementById('start-pick-btn').disabled = s.participants.filter(p => !p.isHost).length === 0;
+      } else {
+        show('view-guest-lobby');
+        renderParticipants(s.participants, 'lobby-participants-guest', []);
+      }
+    } else if (s.phase === 'tasting') {
+      show('view-tasting');
+      renderTasting(s);
+    } else if (s.phase === 'revealed') {
+      show('view-revealed');
+      renderResults(s.results);
+      if (me.isHost) show('host-reset-card');
+    }
+  }
+
+  function renderTasting(s) {
+    const owner = s.currentOwner;
+    const tasted = s.tastedOwnerIds.length;
+    const total = s.totalInQueue || s.participants.length;
+    document.getElementById('wine-counter').textContent = `Wine ${tasted} of ${total}`;
+    document.getElementById('tasting-wine-name').textContent = `${owner?.name}'s wine`;
+    const pct = total > 0 ? (tasted / total) * 100 : 0;
+    document.getElementById('progress-fill').style.width = pct + '%';
+
+    renderParticipants(s.participants, 'rated-list', s.ratedParticipantIds);
+
+    const myRated = s.ratedParticipantIds.includes(me.id);
+    document.getElementById('already-rated-msg').classList.toggle('hidden', !myRated);
+
+    if (me.isHost) {
+      show('host-controls');
+      document.getElementById('rating-form-card').classList.add('hidden');
+      renderPersonPicker(s);
+      document.getElementById('prev-btn').disabled = s.currentIndex <= 0;
+    } else {
+      hide('host-controls');
+      document.getElementById('rating-form-card').classList.remove('hidden');
+      buildStars(selectedScore);
+    }
+  }
+
+  function renderPersonPicker(s) {
+    const grid = document.getElementById('person-picker');
+    const tastedSet = new Set(s.tastedOwnerIds);
+    // All participants except the host
+    const people = s.participants.filter(p => !p.isHost);
+    grid.innerHTML = people.map(p => {
+      const isCurrent = s.currentOwner?.id === p.id;
+      const isTasted = tastedSet.has(p.id) && !isCurrent;
+      let cls = 'person-btn';
+      if (isCurrent) cls += ' current';
+      else if (isTasted) cls += ' tasted';
+      const label = isTasted ? `✓ ${esc(p.name)}` : esc(p.name);
+      return `<button class="${cls}" onclick="selectNext('${p.id}')">${label}</button>`;
+    }).join('');
+  }
+
+  function renderParticipants(participants, listId, ratedIds) {
+    const el = document.getElementById(listId);
+    if (!el) return;
+    if (participants.length === 0) {
+      el.innerHTML = '<li style="color:var(--muted);font-style:italic;font-size:0.9rem">No one yet...</li>';
+      return;
+    }
+    el.innerHTML = participants.map(p => {
+      const rated = ratedIds.includes(p.id);
+      return `<li>
+        <div class="dot ${rated ? '' : 'unrated'}"></div>
+        <span>${esc(p.name)}</span>
+        <span class="chip ${p.isHost ? 'chip-host' : 'chip-guest'}">${p.isHost ? 'Host' : 'Guest'}</span>
+        ${ratedIds.length > 0 ? `<span style="margin-left:auto;font-size:0.8rem;color:var(--muted)">${rated ? '✓ Rated' : 'Waiting...'}</span>` : ''}
+      </li>`;
+    }).join('');
+  }
+
+  function renderResults(results) {
+    const medals = ['🥇', '🥈', '🥉'];
+    document.getElementById('results-list').innerHTML = results.map((r, i) => `
+      <div class="result-wine">
+        <div class="result-wine-header">
+          <span class="result-rank">${medals[i] || (i + 1)}</span>
+          <div class="result-wine-name">${esc(r.owner.name)}'s wine</div>
+          <div>
+            <div class="result-avg">${r.average}</div>
+            <div style="font-size:0.72rem;opacity:0.7;text-align:center">${r.count} vote${r.count !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        <div class="result-ratings">
+          ${r.ratings.map(rt => `
+            <div class="result-rating-row">
+              <span class="rater">${esc(rt.raterName)}</span>
+              <span class="notes">${esc(rt.notes)}</span>
+              <span class="rscore">${rt.score}/10</span>
+            </div>
+          `).join('')}
+          ${r.ratings.length === 0 ? '<p style="color:var(--muted);font-size:0.85rem;font-style:italic">No ratings</p>' : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function buildStars(current) {
+    const container = document.getElementById('score-stars');
+    if (!container) return;
+    container.innerHTML = '';
+    for (let i = 1; i <= 10; i++) {
+      const label = document.createElement('label');
+      label.textContent = '★';
+      label.classList.toggle('active', i <= current);
+      label.onclick = () => {
+        selectedScore = i;
+        buildStars(i);
+        const map = ['','Poor','Poor','Below average','Average','Average','Good','Good','Very good','Excellent','Outstanding!'];
+        document.getElementById('score-label').textContent = `${i}/10 — ${map[i]}`;
+      };
+      container.appendChild(label);
+    }
+  }
+
+  function showPicker() {
+    // Transition from lobby: host selects first wine
+    // Just start tasting phase — selectNext will kick it off
+    // First, show an instruction or auto-show the tasting view with picker
+    // We emit a no-op to move to tasting phase with no current wine yet — handled by selectNext
+    // For UX: tell server to move to tasting mode so picker shows
+    socket.emit('startTasting');
+  }
+
+  function selectNext(ownerId) { socket.emit('selectNext', { ownerId }); }
+  function prevWine() { socket.emit('prevWine'); }
+  function revealScores() { socket.emit('reveal'); }
+  function resetEverything() { if (confirm('Reset everything?')) socket.emit('reset'); }
+
+  function submitRating() {
+    if (!selectedScore) { alert('Please select a score'); return; }
+    const notes = document.getElementById('rating-notes').value.trim();
+    socket.emit('submitRating', { ownerId: currentState.currentOwner.id, score: selectedScore, notes });
+    document.getElementById('rating-notes').value = '';
+    selectedScore = 0;
+    buildStars(0);
+    document.getElementById('score-label').textContent = 'Tap a star to score';
+  }
+
+  function show(...ids) { ids.forEach(id => document.getElementById(id)?.classList.remove('hidden')); }
+  function hide(...ids) { ids.forEach(id => document.getElementById(id)?.classList.add('hidden')); }
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

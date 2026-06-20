@@ -18,6 +18,8 @@ let state = {
   phase: 'lobby',      // lobby | tasting | revealed
 };
 
+const disconnectTimers = {}; // participantId -> setTimeout handle
+
 function broadcastState() {
   io.emit('state', publicState());
 }
@@ -142,10 +144,32 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
+  // Reconnecting client restores their participant slot instead of creating a new one
+  socket.on('rejoin', ({ id }) => {
+    if (disconnectTimers[id]) {
+      clearTimeout(disconnectTimers[id]);
+      delete disconnectTimers[id];
+    }
+    const existing = state.participants[id];
+    if (existing) {
+      existing.socketId = socket.id;
+      socket.data.participantId = id;
+      socket.emit('joined', { id, isHost: existing.isHost });
+    } else {
+      socket.emit('sessionLost');
+    }
+    broadcastState();
+  });
+
   socket.on('disconnect', () => {
     const pid = socket.data.participantId;
-    if (pid) delete state.participants[pid];
-    broadcastState();
+    if (!pid) return;
+    // Grace period: give 10s to reconnect before removing from state
+    disconnectTimers[pid] = setTimeout(() => {
+      delete state.participants[pid];
+      delete disconnectTimers[pid];
+      broadcastState();
+    }, 10000);
   });
 });
 

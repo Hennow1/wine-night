@@ -285,6 +285,7 @@
   let currentState = null;
   let selectedScore = 0;
   let loginTab = 'guest';
+  let joinedAs = null; // { name, password } — stored so we can re-join if session is lost
 
   function setTab(tab) {
     loginTab = tab;
@@ -296,6 +297,7 @@
     const name = document.getElementById('login-name').value.trim();
     const password = loginTab === 'host' ? document.getElementById('login-password').value : '';
     if (!name) { alert('Please enter your name'); return; }
+    joinedAs = { name, password };
     socket.emit('join', { name, password });
   }
 
@@ -307,6 +309,16 @@
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('header-name').textContent = isHost ? '🔑 Host' : '';
+  });
+
+  // On reconnect, restore session instead of appearing as a new participant
+  socket.on('connect', () => {
+    if (me) socket.emit('rejoin', { id: me.id });
+  });
+
+  // Server lost our session (e.g. restart) — re-join fresh with stored credentials
+  socket.on('sessionLost', () => {
+    if (joinedAs) socket.emit('join', joinedAs);
   });
 
   socket.on('state', (s) => {
